@@ -1,0 +1,81 @@
+name: A11y-Agent Accessibility Scan
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      # Only fire when UI source files change — skip pure logic / test / doc PRs
+      - "**/*.jsx"
+      - "**/*.tsx"
+      - "**/*.js"
+      - "**/*.ts"
+      - "**/*.css"
+      - "**/*.scss"
+      - "**/*.html"
+      - "**/*.svg"
+
+permissions:
+  contents: read
+  pull-requests: write   # required to post the consolidated PR comment
+
+jobs:
+  accessibility-scan:
+    name: Shift-Left Accessibility Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: a11y-agent/package-lock.json
+
+      - name: Install dependencies
+        working-directory: a11y-agent
+        run: npm ci
+
+      - name: Build A11y-Agent
+        working-directory: a11y-agent
+        run: npm run build
+
+      - name: Run Orchestrator
+        working-directory: a11y-agent
+        env:
+          # ── GitHub context (injected automatically by Actions) ──────────────
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+
+          # ── Jira integration (add these in repo Settings → Secrets) ─────────
+          # Required for Rule Engine to fetch ticket acceptance criteria.
+          # Leave unset to run without Jira context (non-fatal; scan still runs).
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+
+          # ── WCAG index override (optional) ──────────────────────────────────
+          # Set WCAG_JSON_URL to point at a hosted custom WCAG index.
+          # Leave unset to use the bundled baseline (src/data/wcag-2.2-index.json).
+          WCAG_JSON_URL: ${{ secrets.WCAG_JSON_URL }}
+
+          # ── Design system manifest (required for contrast fix suggestions) ──
+          # URL to your internal design-system JSON manifest.
+          # See src/agents/rule-engine.ts → DesignSystemManifest for the schema.
+          DESIGN_SYSTEM_DOCS_URL: ${{ secrets.DESIGN_SYSTEM_DOCS_URL }}
+
+        run: npm start
+
+      # Exit code semantics (set by src/index.ts):
+      #   0 — all checks passed (or no UI files changed)
+      #   1 — one or more accessibility failures found
+      #   2 — fatal internal error
+      #
+      # To make failures block PR merge, add this job to your branch protection
+      # rule under Settings → Branches → "Require status checks to pass".
+      # To allow merging despite failures (advisory mode), add:
+      #   continue-on-error: true
+      # to the "Run Orchestrator" step above.

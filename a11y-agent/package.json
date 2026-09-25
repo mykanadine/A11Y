@@ -1,0 +1,24 @@
+{
+  "name": "a11y-agent",
+  "version": "0.1.0",
+  "description": "Shift-Left Accessibility Simulator — intercepts PRs and simulates disability-user interactions",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "a11y-agent": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc && cp -r src/data dist/data",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "linkedom": "^0.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.4.0"
+  }
+}
