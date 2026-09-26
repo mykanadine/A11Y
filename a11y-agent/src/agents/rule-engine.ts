@@ -172,10 +172,10 @@ function filterRelevantCriteria(
       if (tags.includes("alt-text") && !hasImages) return false;
       // Skip interactive-element rules when no interactive elements are present
       if ((tags.includes("keyboard") || tags.includes("focus")) && !hasInteractive) return false;
-      // Skip motion rules when no motion/animation is present
-      if (inVestibular && !hasMotion) return false;
-      // Skip colour rules when no colour declarations are present
-      if (inVisual && !hasColor) return false;
+      // Skip motion rules only when the rule is EXCLUSIVELY vestibular
+      if (inVestibular && !inMotor && !inVisual && !hasMotion) return false;
+      // Skip colour rules only when the rule is EXCLUSIVELY visual
+      if (inVisual && !inMotor && !inVestibular && !hasColor) return false;
 
       return true;
     })

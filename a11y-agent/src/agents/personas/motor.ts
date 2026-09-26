@@ -325,13 +325,137 @@ function checkPositiveTabindex(
   return results;
 }
 
+// ─── Additional checks ────────────────────────────────────────────────────────
+
+function checkUnlabelledInputs(
+  document: ReturnType<typeof parseHTML>["document"],
+  component: UIComponent,
+  inScope: Set<string>,
+): TestResult[] {
+  const RULE = "3.3.2";
+  if (!inScope.has(RULE)) return [];
+
+  const results: TestResult[] = [];
+  const inputs = document.querySelectorAll("input, select, textarea");
+
+  for (const input of inputs) {
+    const type = (input.getAttribute("type") ?? "text").toLowerCase();
+    // hidden / submit / reset / button / image inputs don't need a label
+    if (["hidden", "submit", "reset", "button", "image"].includes(type)) continue;
+
+    const id = input.getAttribute("id");
+    const hasLabel =
+      input.hasAttribute("aria-label") ||
+      input.hasAttribute("aria-labelledby") ||
+      input.hasAttribute("title") ||
+      (id && document.querySelector(`label[for="${id}"]`) !== null) ||
+      // input wrapped directly inside a <label>
+      input.closest("label") !== null;
+
+    if (hasLabel) continue;
+
+    const needle = elementNeedle(input);
+    const line = findLine(component.sourceCode, needle);
+    const tag = input.tagName.toLowerCase();
+    const label = id ? `${tag}#${id}` : elementLabel(input);
+
+    results.push({
+      status: "fail",
+      ruleId: RULE,
+      filePath: component.filePath,
+      line,
+      issue: `${label} has no associated label — screen readers cannot announce what the field is for`,
+      suggestedFix: `Add a <label for="${id ?? "FIELD_ID"}">…</label>, or add aria-label="…" directly on the element`,
+    });
+  }
+
+  return results;
+}
+
+function checkEmptyButtons(
+  document: ReturnType<typeof parseHTML>["document"],
+  component: UIComponent,
+  inScope: Set<string>,
+): TestResult[] {
+  const RULE = "4.1.2";
+  if (!inScope.has(RULE)) return [];
+
+  const results: TestResult[] = [];
+  const buttons = document.querySelectorAll("button");
+
+  for (const btn of buttons) {
+    const hasText = (btn.textContent ?? "").trim().length > 0;
+    const hasAriaLabel = btn.hasAttribute("aria-label") || btn.hasAttribute("aria-labelledby");
+    const hasTitle = btn.hasAttribute("title");
+    const hasImgWithAlt = Array.from(btn.querySelectorAll("img[alt]")).some(
+      (img) => (img.getAttribute("alt") ?? "").trim().length > 0
+    );
+
+    if (hasText || hasAriaLabel || hasTitle || hasImgWithAlt) continue;
+
+    const needle = elementNeedle(btn);
+    const line = findLine(component.sourceCode, needle);
+    const label = elementLabel(btn);
+
+    results.push({
+      status: "fail",
+      ruleId: RULE,
+      filePath: component.filePath,
+      line,
+      issue: `${label} has no accessible name — screen readers will announce it as an unlabelled button`,
+      suggestedFix: `Add descriptive text content, an aria-label="…" attribute, or a visually-hidden <span> inside the button`,
+    });
+  }
+
+  return results;
+}
+
+function checkTableHeaders(
+  document: ReturnType<typeof parseHTML>["document"],
+  component: UIComponent,
+  inScope: Set<string>,
+): TestResult[] {
+  const RULE = "1.3.1";
+  if (!inScope.has(RULE)) return [];
+
+  const results: TestResult[] = [];
+  const tables = document.querySelectorAll("table");
+
+  for (const table of tables) {
+    const hasHeaders =
+      table.querySelector("th") !== null ||
+      table.querySelector("[role='columnheader']") !== null ||
+      table.querySelector("[role='rowheader']") !== null;
+
+    if (hasHeaders) continue;
+
+    // Skip layout tables (role="presentation" or role="none")
+    const role = table.getAttribute("role") ?? "";
+    if (role === "presentation" || role === "none") continue;
+
+    const needle = elementNeedle(table);
+    const line = findLine(component.sourceCode, needle);
+
+    results.push({
+      status: "fail",
+      ruleId: RULE,
+      filePath: component.filePath,
+      line,
+      issue: `<table> has no <th> header cells — screen readers cannot identify column or row meanings`,
+      suggestedFix: `Add <th scope="col"> cells to the first row (or <th scope="row"> for row headers) to provide column/row context`,
+    });
+  }
+
+  return results;
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export async function runMotorPersona(input: PersonaInput): Promise<PersonaReport> {
   const inScope = inScopeRuleIds(input.complianceContext);
   const allResults: TestResult[] = [];
 
-  const RULES_CHECKED = ["1.1.1", "2.1.1", "2.4.7", "4.1.2", "2.4.3"] as const;
+  const RULES_CHECKED = ["1.1.1", "1.3.1", "2.1.1", "2.4.7", "4.1.2", "2.4.3", "3.3.2"] as const;
 
   for (const component of input.components) {
     const { document } = parseHTML(component.compiledHTML);
@@ -342,6 +466,9 @@ export async function runMotorPersona(input: PersonaInput): Promise<PersonaRepor
       ...checkMissingFocusIndicator(document, component, inScope),
       ...checkDivSpanInteractive(document, component, inScope),
       ...checkPositiveTabindex(document, component, inScope),
+      ...checkUnlabelledInputs(document, component, inScope),
+      ...checkEmptyButtons(document, component, inScope),
+      ...checkTableHeaders(document, component, inScope),
     ];
 
     // Track which rules produced at least one failure for this component

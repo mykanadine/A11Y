@@ -12,7 +12,30 @@
         "kind": "build",
         "isDefault": true
       },
-      "problemMatcher": ["$tsc"]
+      "problemMatcher": ["$tsc"],
+      "presentation": {
+        "reveal": "silent"
+      }
+    },
+    {
+      "label": "Watch A11y Extension",
+      "type": "shell",
+      "command": "npm run watch",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "base": "$tsc-watch",
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Starting compilation",
+          "endsPattern": "Found 0 errors"
+        }
+      },
+      "presentation": {
+        "reveal": "never"
+      }
     }
   ]
 }

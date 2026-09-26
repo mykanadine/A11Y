@@ -5,6 +5,8 @@
       "name": "Run A11y Simulator Extension",
       "type": "extensionHost",
       "request": "launch",
+      "stopOnEntry": false,
+      "timeout": 30000,
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}",
         "${workspaceFolder}/../test-sample.html"
@@ -12,7 +14,9 @@
       "outFiles": [
         "${workspaceFolder}/out/**/*.js"
       ],
-      "preLaunchTask": "Build A11y Extension"
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
     }
   ]
 }

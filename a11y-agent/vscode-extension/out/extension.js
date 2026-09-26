@@ -95,6 +95,37 @@ function activate(context) {
         sidebarProvider.clear();
         statusBar.update(0, 0);
     });
+    // ── Missing commands referenced by codeActions.ts ────────────────────────────
+    const previewDiffCmd = vscode.commands.registerCommand("a11y.previewDiff", async (uri, diag) => {
+        if (!diag?.a11y?.diff)
+            return;
+        const doc = await vscode.workspace.openTextDocument(uri);
+        const original = doc.getText();
+        const lines = original.split("\n");
+        const diffLines = diag.a11y.diff.split("\n");
+        const removed = diffLines.filter((l) => l.startsWith("-") && !l.startsWith("---")).map((l) => l.slice(1));
+        const added = diffLines.filter((l) => l.startsWith("+") && !l.startsWith("+++")).map((l) => l.slice(1));
+        const hunkMatch = diag.a11y.diff.match(/@@ -(\d+)/);
+        const startLine = hunkMatch ? parseInt(hunkMatch[1], 10) - 1 : 0;
+        const patched = [...lines];
+        if (removed.length && added.length)
+            patched.splice(startLine, removed.length, ...added);
+        const patchedUri = uri.with({ scheme: "untitled", path: uri.path.replace(/(\.[^.]+)$/, `.a11y-fixed$1`) });
+        const patchedDoc = await vscode.workspace.openTextDocument(patchedUri);
+        const initEdit = new vscode.WorkspaceEdit();
+        initEdit.insert(patchedUri, new vscode.Position(0, 0), patched.join("\n"));
+        await vscode.workspace.applyEdit(initEdit);
+        await vscode.commands.executeCommand("vscode.diff", uri, patchedDoc.uri, `A11y Fix — WCAG ${diag.a11y.ruleId}: ${diag.a11y.persona}`);
+    });
+    const revealInSidebarCmd = vscode.commands.registerCommand("a11y.revealInSidebar", () => {
+        vscode.commands.executeCommand("a11ySimulatorView.focus");
+    });
+    // ── Auto-scan on open ────────────────────────────────────────────────────────
+    const onOpen = vscode.workspace.onDidOpenTextDocument(async (doc) => {
+        if (!isUIFile(doc.fileName))
+            return;
+        await runScan(doc);
+    });
     // ── Auto-scan on save ────────────────────────────────────────────────────────
     const onSave = vscode.workspace.onDidSaveTextDocument(async (doc) => {
         const cfg = vscode.workspace.getConfiguration("a11ySimulator");
@@ -104,7 +135,12 @@ function activate(context) {
             return;
         await runScan(doc);
     });
-    context.subscriptions.push(diagnosticCollection, treeView, hoverProvider, codeActionProvider, scanFileCmd, scanWithJiraCmd, clearCmd, onSave, statusBar);
+    context.subscriptions.push(diagnosticCollection, treeView, hoverProvider, codeActionProvider, scanFileCmd, scanWithJiraCmd, clearCmd, previewDiffCmd, revealInSidebarCmd, onOpen, onSave, statusBar);
+    // ── Scan whatever is already open at activation time ─────────────────────────
+    const activeDoc = vscode.window.activeTextEditor?.document;
+    if (activeDoc && isUIFile(activeDoc.fileName)) {
+        void runScan(activeDoc);
+    }
 }
 function deactivate() {
     statusBar?.dispose();
