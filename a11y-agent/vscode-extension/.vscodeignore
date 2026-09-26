@@ -1,0 +1,55 @@
+# .vscodeignore — controls what is excluded from the packaged .vsix
+# Everything is excluded by default; only explicitly included dirs/files end up in the VSIX.
+# vsce includes: package.json, out/, engine/, and any !-negated patterns below.
+
+# ── Source / development files ───────────────────────────────────────────────
+src/
+scripts/
+.vscode/
+tsconfig-ext.json
+tsconfig.json
+
+# ── Build artefacts that are NOT the extension runtime ───────────────────────
+# (out/ and engine/ are KEPT — they are the extension runtime)
+releases/
+
+# ── Node dependencies (extension has none at runtime) ────────────────────────
+node_modules/
+
+# ── Security: never package credentials or environment files ─────────────────
+.env
+.env.*
+*.env
+*secret*
+*credential*
+*token*
+*.pem
+*.key
+
+# ── Test and sample files ─────────────────────────────────────────────────────
+**/*.test.js
+**/*.spec.js
+test-sample.html
+
+# ── OS / editor noise ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.gitignore
+.bobignore
+README.md
+CHANGELOG.md
+
+# ── Explicitly KEEP the runtime engine ───────────────────────────────────────
+# (vsce includes engine/ by default once the above exclusions are applied,
+#  but the negation below makes the intent explicit and guards against future
+#  blanket exclusions accidentally removing it)
+!engine/
+!engine/index.cjs
+!engine/data/
+!engine/data/wcag-2.2-index.json
+!out/
+!out/extension.js
+!package.json

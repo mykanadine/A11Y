@@ -13,7 +13,15 @@
     "start": "node dist/index.js",
     "mcp": "node dist/mcp-server.js",
     "dev": "tsx src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+
+    "extension:setup": "cd vscode-extension && npm install",
+    "extension:build": "npm run build && cd vscode-extension && npm run build && npm run bundle-engine",
+    "extension:check": "cd vscode-extension && npm run typecheck",
+    "extension:dev": "npm run build && cd vscode-extension && npm run build && npm run bundle-engine",
+    "extension:package": "npm run extension:build && cd vscode-extension && npm run package",
+    "extension:install-local": "npm run extension:package && node scripts/install-local-vsix.js",
+    "extension:publish": "cd vscode-extension && npm run publish"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",

@@ -1,11 +1,20 @@
 {
   "name": "vscode-a11y-simulator",
   "displayName": "A11y Simulator",
-  "description": "Real-time WCAG 2.2 accessibility linting with Motor, Visual, and Vestibular persona checks",
+  "description": "Real-time WCAG 2.2 accessibility linting with Motor, Visual, and Vestibular/Cognitive persona checks. Runs entirely locally — no GitHub token required.",
   "version": "0.1.0",
   "publisher": "ibm-hackathon",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/IBM/A11Y"
+  },
+  "bugs": {
+    "url": "https://github.com/IBM/A11Y/issues"
+  },
   "engines": { "vscode": "^1.85.0" },
-  "categories": ["Linters"],
+  "categories": ["Linters", "Other"],
+  "keywords": ["accessibility", "a11y", "wcag", "wcag22", "linter"],
   "activationEvents": [
     "onLanguage:html",
     "onLanguage:javascriptreact",
@@ -52,7 +61,7 @@
         "a11ySimulator.enginePath": {
           "type": "string",
           "default": "",
-          "description": "Absolute path to a11y-agent/dist/index.js. Leave empty to use the sibling engine."
+          "description": "Optional: absolute path to a custom a11y-agent engine entry point (e.g. /path/to/dist/index.js). Leave empty to use the engine bundled with this extension."
         }
       }
     }
@@ -60,12 +69,17 @@
   "scripts": {
     "build": "tsc -p tsconfig-ext.json",
     "watch": "tsc -p tsconfig-ext.json --watch",
-    "typecheck": "tsc -p tsconfig-ext.json --noEmit"
+    "typecheck": "tsc -p tsconfig-ext.json --noEmit",
+    "bundle-engine": "node scripts/bundle-engine.js",
+    "package": "npm run build && npm run bundle-engine && vsce package --out releases/",
+    "publish": "vsce publish"
   },
   "dependencies": {},
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.25.0",
     "typescript": "^5.4.0"
   }
 }
