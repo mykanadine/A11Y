@@ -22,9 +22,10 @@ const GH_API = "https://api.github.com";
 const GH_TOKEN = process.env.GITHUB_TOKEN ?? "";
 
 async function ghFetch(path: string): Promise<Response> {
+  const token = process.env.GITHUB_TOKEN || GH_TOKEN;
   const res = await fetch(`${GH_API}${path}`, {
     headers: {
-      Authorization: `Bearer ${GH_TOKEN}`,
+      Authorization: `Bearer ${token}`,
       Accept: "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28",
     },
@@ -178,10 +179,11 @@ async function postPRComment(repo: string, prNumber: number, body: string): Prom
     console.log("[Orchestrator] Dry-run: PR comment suppressed.");
     return;
   }
+  const token = process.env.GITHUB_TOKEN || GH_TOKEN;
   const res = await fetch(`${GH_API}/repos/${repo}/issues/${prNumber}/comments`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${GH_TOKEN}`,
+      Authorization: `Bearer ${token}`,
       Accept: "application/vnd.github+json",
       "Content-Type": "application/json",
     },

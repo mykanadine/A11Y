@@ -25,6 +25,13 @@
  */
 import { run } from "./agents/orchestrator.js";
 
+// Automatically load .env if present
+try {
+  (process as unknown as { loadEnvFile?: () => void }).loadEnvFile?.();
+} catch {
+  // Ignore when .env doesn't exist
+}
+
 // ─── Argument parsing ─────────────────────────────────────────────────────────
 
 interface ParsedArgs {

@@ -220,29 +220,44 @@ async function loadDesignSystem(): Promise<{
   palette: ApprovedFixPalette;
   notes: string[];
 }> {
-  const url = requireEnv("DESIGN_SYSTEM_DOCS_URL");
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`[RuleEngine] Design system fetch failed: ${res.status}`);
+  const url = process.env.DESIGN_SYSTEM_DOCS_URL;
+  if (!url) {
+    return {
+      palette: { colors: [], spacingTokens: {}, componentNames: [] },
+      notes: [],
+    };
+  }
 
-  const manifest: DesignSystemManifest = await res.json();
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`[RuleEngine] Design system fetch failed: ${res.status}`);
 
-  const colors: DesignSystemColor[] = manifest.colors.map((c) => ({
-    token: c.token,
-    hex: c.hex,
-    contrastOnWhite: c.contrastOnWhite,
-    contrastOnBlack: c.contrastOnBlack,
-    // A colour passes AA if it achieves ≥4.5:1 against either white or black
-    wcagAA: c.contrastOnWhite >= 4.5 || c.contrastOnBlack >= 4.5,
-  }));
+    const manifest: DesignSystemManifest = await res.json();
 
-  return {
-    palette: {
-      colors,
-      spacingTokens: manifest.spacingTokens,
-      componentNames: manifest.componentNames,
-    },
-    notes: manifest.notes ?? [],
-  };
+    const colors: DesignSystemColor[] = manifest.colors.map((c) => ({
+      token: c.token,
+      hex: c.hex,
+      contrastOnWhite: c.contrastOnWhite,
+      contrastOnBlack: c.contrastOnBlack,
+      // A colour passes AA if it achieves ≥4.5:1 against either white or black
+      wcagAA: c.contrastOnWhite >= 4.5 || c.contrastOnBlack >= 4.5,
+    }));
+
+    return {
+      palette: {
+        colors,
+        spacingTokens: manifest.spacingTokens ?? {},
+        componentNames: manifest.componentNames ?? [],
+      },
+      notes: manifest.notes ?? [],
+    };
+  } catch (err) {
+    console.warn(`[RuleEngine] Design system fetch failed (non-fatal): ${(err as Error).message}`);
+    return {
+      palette: { colors: [], spacingTokens: {}, componentNames: [] },
+      notes: [],
+    };
+  }
 }
 
 // ─── 3. Jira ticket ingestion ─────────────────────────────────────────────────
