@@ -88,7 +88,7 @@ class DiagnosticsProvider {
             return custom;
         // Default: sibling a11y-agent package relative to this extension's location
         const extensionRoot = this.context.extensionPath;
-        const sibling = path.resolve(extensionRoot, "..", "..", "dist", "index.js");
+        const sibling = path.resolve(extensionRoot, "..", "dist", "index.js");
         if (fs.existsSync(sibling))
             return sibling;
         throw new Error("a11y-agent engine not found. Set a11ySimulator.enginePath in settings, " +
