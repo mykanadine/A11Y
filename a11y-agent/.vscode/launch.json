@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run A11y Simulator Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "stopOnEntry": false,
+      "timeout": 30000,
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/vscode-extension",
+        "${workspaceFolder}/test-sample.html"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/vscode-extension/out/**/*.js"
+      ],
+      "preLaunchTask": "Build A11y Extension (full)",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    }
+  ]
+}
