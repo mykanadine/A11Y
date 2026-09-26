@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * A11y-Agent — unified entry point for both trigger modes.
+ * A11y-Agent — unified entry point for all trigger modes.
  *
  * MODE 1 — GitHub Action (webhook trigger):
  *   Called by `npm start` from the CI workflow.
  *   All inputs come from environment variables injected by the Action runner.
  *
- * MODE 2 — CLI (local developer self-check):
+ * MODE 2 — PR scan (local developer self-check):
  *   a11y-agent scan <PR-number> [options]
  *
  *   Options:
@@ -19,11 +19,22 @@
  *     a11y-agent scan 42 --repo acme/frontend --jira FRONT-1234
  *     a11y-agent scan 42 --repo acme/frontend --dry-run
  *
- * Both modes call the identical run() function from the Orchestrator.
- * The --jira and --dry-run flags are forwarded via environment variables so
- * the Orchestrator signature stays stable (repo: string, prNumber: number).
+ * MODE 3 — Local file scan (no GitHub required):
+ *   a11y-agent local <file-path> [options]
+ *
+ *   Options:
+ *     --jira   <doc-path>   Path to a local Jira Markdown spec (e.g. CHKT-104.md)
+ *     --json                Emit results as JSON (used by the IDE extension)
+ *
+ *   Examples:
+ *     a11y-agent local src/CheckoutPage.jsx
+ *     a11y-agent local src/CheckoutPage.jsx --jira docs/CHKT-104.md
+ *     a11y-agent local src/CheckoutPage.jsx --json
+ *
+ * Modes 2 & 3 call identical shared sub-engines (rule-engine, personas, debugger).
  */
 import { run } from "./agents/orchestrator.js";
+import { scanLocalFiles } from "./local-scanner.js";
 
 // Automatically load .env if present
 try {
@@ -80,23 +91,29 @@ function printUsage(): void {
 A11y-Agent — Shift-Left Accessibility Simulator
 
 Usage:
-  a11y-agent scan <PR-number> --repo <owner/repo> [--jira <TICKET-ID>] [--dry-run]
+  a11y-agent scan  <PR-number> --repo <owner/repo> [--jira <TICKET-ID>] [--dry-run]
+  a11y-agent local <file-path> [--jira <doc-path>] [--json]
 
-Options:
+Commands:
+  scan   Fetch a GitHub PR, run all checks, and post an accessibility report as a PR comment.
+  local  Scan a local source file directly — no GitHub token required.
+
+scan options:
   --repo   <owner/repo>   GitHub repository (e.g. "acme/frontend")
   --jira   <TICKET-ID>    Override Jira ticket ID extracted from PR metadata
-                          (e.g. "FRONT-1234"). Useful when the ticket ID is not
-                          in the PR title, branch name, or body.
-  --dry-run               Run all checks and print the report to stdout, but do
-                          NOT post a comment on the PR. Safe for local testing.
+  --dry-run               Print the report to stdout, do NOT post a PR comment
 
-Environment variables (alternative to flags):
-  GITHUB_TOKEN            Required. Personal access token with repo + PR scopes.
+local options:
+  --jira   <doc-path>     Path to a local Jira Markdown spec (e.g. CHKT-104.md)
+  --json                  Emit results as a JSON object (used by the IDE extension)
+
+Environment variables:
+  GITHUB_TOKEN            Required for 'scan'. Personal access token with repo + PR scopes.
   GITHUB_REPOSITORY       Repository in "owner/repo" format (set by Actions).
   PR_NUMBER               PR number (set by Actions, overridden by positional arg).
-  A11Y_JIRA_OVERRIDE      Same as --jira.
+  A11Y_JIRA_OVERRIDE      Same as --jira (scan mode).
   A11Y_DRY_RUN=1          Same as --dry-run.
-  JIRA_BASE_URL           Jira instance base URL (e.g. https://acme.atlassian.net).
+  JIRA_BASE_URL           Jira instance URL (e.g. https://acme.atlassian.net).
   JIRA_TOKEN              Jira API token.
   JIRA_USER_EMAIL         Email paired with the Jira token.
   DESIGN_SYSTEM_DOCS_URL  URL of the design system JSON manifest.
@@ -106,9 +123,90 @@ See .env.example for a ready-to-copy local setup template.
 `.trim());
 }
 
+// ─── Local scan handler ────────────────────────────────────────────────────────
+
+async function runLocalScan(): Promise<void> {
+  const args = process.argv.slice(2);
+
+  function flag(name: string): string | null {
+    const idx = args.indexOf(name);
+    return idx !== -1 && args[idx + 1] ? args[idx + 1] ?? null : null;
+  }
+  function boolFlag(name: string): boolean {
+    return args.includes(name);
+  }
+
+  // Positional: `local <file-path>`
+  const localIdx = args.indexOf("local");
+  const filePath = localIdx !== -1 ? args[localIdx + 1] : null;
+
+  if (!filePath || filePath.startsWith("--")) {
+    console.error("Error: `local` requires a file path.\n  Usage: a11y-agent local <file-path> [--jira <doc>]");
+    process.exit(1);
+  }
+
+  const jiraDocPath = flag("--jira") ?? undefined;
+  const jsonMode = boolFlag("--json");
+
+  // In JSON mode all progress logs must go to stderr so stdout stays clean JSON
+  if (jsonMode) process.env.A11Y_QUIET = "1";
+
+  if (!jsonMode) {
+    console.log(`[A11y-Agent] Mode   : Local scan`);
+    console.log(`[A11y-Agent] File   : ${filePath}`);
+    if (jiraDocPath) console.log(`[A11y-Agent] Jira   : ${jiraDocPath}`);
+    console.log("");
+  }
+
+  try {
+    const result = await scanLocalFiles({ filePaths: [filePath], jiraDocPath });
+
+    if (jsonMode) {
+      // Structured output for IDE extension consumption
+      process.stdout.write(
+        JSON.stringify({
+          passCount: result.passCount,
+          failCount: result.failCount,
+          issues: result.failures.map((f) => ({
+            filePath: f.filePath,
+            line: f.line,
+            ruleId: f.ruleId,
+            persona: f.persona,
+            issue: f.issue,
+            suggestedFix: f.suggestedFix,
+            explanation: f.patch.explanation,
+            diff: f.patch.diff,
+          })),
+        }) + "\n"
+      );
+    } else {
+      console.log("─────────────────────────────────────────────────────────");
+      console.log(`  Scan complete : ${filePath}`);
+      console.log(`  Passed        : ${result.passCount}`);
+      console.log(`  Failed        : ${result.failCount}`);
+      console.log("─────────────────────────────────────────────────────────");
+      console.log("");
+      console.log(result.report);
+    }
+
+    process.exit(result.failCount > 0 ? 1 : 0);
+  } catch (err) {
+    console.error("[A11y-Agent] Fatal error:", err);
+    process.exit(2);
+  }
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+
+  // Route to local scanner if first argument is "local"
+  if (args[0] === "local") {
+    await runLocalScan();
+    return;
+  }
+
   const parsed = parseArgs();
 
   if (!parsed) {

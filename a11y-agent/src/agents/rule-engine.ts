@@ -347,7 +347,11 @@ function partitionByPersona(rules: WCAGRule[]): RulesByPersona {
 export async function runRuleEngine(input: RuleEngineInput): Promise<ComplianceContext> {
   const { components, jiraTicketId } = input;
 
-  console.log("[RuleEngine] Starting ingestion pipeline…");
+  // When A11Y_QUIET=1 (set by --json mode), route progress logs to stderr
+  // so stdout stays clean for machine-readable JSON output.
+  const log = process.env.A11Y_QUIET === "1" ? console.error : console.log;
+
+  log("[RuleEngine] Starting ingestion pipeline…");
 
   // ── 3. Jira (first, because it controls allowAAA) ────────────────────────
   let componentIntent = "(no Jira ticket linked)";
@@ -355,7 +359,7 @@ export async function runRuleEngine(input: RuleEngineInput): Promise<ComplianceC
   let allowAAA = false;
 
   if (jiraTicketId) {
-    console.log(`[RuleEngine] Fetching Jira ticket ${jiraTicketId}…`);
+    log(`[RuleEngine] Fetching Jira ticket ${jiraTicketId}…`);
     try {
       const jira = await fetchJiraTicket(jiraTicketId);
       componentIntent = jira.componentIntent;
@@ -368,7 +372,7 @@ export async function runRuleEngine(input: RuleEngineInput): Promise<ComplianceC
   }
 
   // ── 1. WCAG 2.2 + 2. Design system in parallel ────────────────────────────
-  console.log("[RuleEngine] Loading WCAG 2.2 index and design system in parallel…");
+  log("[RuleEngine] Loading WCAG 2.2 index and design system in parallel…");
   const [wcagIndex, designSystem] = await Promise.all([
     loadWCAGIndex(),
     loadDesignSystem(),
@@ -376,14 +380,14 @@ export async function runRuleEngine(input: RuleEngineInput): Promise<ComplianceC
 
   // ── Filter WCAG to applicable rules ──────────────────────────────────────
   const applicableRules = filterRelevantCriteria(wcagIndex, components, allowAAA);
-  console.log(
+  log(
     `[RuleEngine] ${applicableRules.length} WCAG rules applicable ` +
       `(${allowAAA ? "A+AA+AAA" : "A+AA only"}).`
   );
 
   // ── Partition into persona buckets ────────────────────────────────────────
   const rulesByPersona = partitionByPersona(applicableRules);
-  console.log(
+  log(
     `[RuleEngine] Rules by persona — ` +
       `Motor: ${rulesByPersona.motor.length}, ` +
       `Visual: ${rulesByPersona.visual.length}, ` +

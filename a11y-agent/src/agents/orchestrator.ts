@@ -190,6 +190,7 @@ async function postPRComment(repo: string, prNumber: number, body: string): Prom
     body: JSON.stringify({ body }),
   });
   if (!res.ok) throw new Error(`Failed to post PR comment: ${res.status}`);
+  console.log("[Orchestrator] PR comment posted.");
 }
 
 // ─── Main Orchestrator ────────────────────────────────────────────────────────
@@ -277,7 +278,6 @@ export async function run(repo: string, prNumber: number): Promise<OrchestratorR
   // ── 7. Post consolidated PR comment ──────────────────────────────────────
   const prCommentMarkdown = buildPRComment(failuresWithPatches, repo, prNumber);
   await postPRComment(repo, prNumber, prCommentMarkdown);
-  console.log("[Orchestrator] PR comment posted.");
 
   return {
     prNumber,
