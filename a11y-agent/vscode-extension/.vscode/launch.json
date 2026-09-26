@@ -6,11 +6,13 @@
       "type": "extensionHost",
       "request": "launch",
       "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}"
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "${workspaceFolder}/../test-sample.html"
       ],
       "outFiles": [
         "${workspaceFolder}/out/**/*.js"
-      ]
+      ],
+      "preLaunchTask": "Build A11y Extension"
     }
   ]
 }
