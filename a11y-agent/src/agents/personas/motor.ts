@@ -106,6 +106,39 @@ function inlineStyleSuppressesFocus(el: Element): boolean {
 
 // ─── Per-check functions ──────────────────────────────────────────────────────
 
+function checkMissingAltText(
+  document: ReturnType<typeof parseHTML>["document"],
+  component: UIComponent,
+  inScope: Set<string>,
+): TestResult[] {
+  const RULE = "1.1.1";
+  if (!inScope.has(RULE)) return [];
+
+  const results: TestResult[] = [];
+  const images = document.querySelectorAll("img");
+
+  for (const img of images) {
+    // alt="" is valid (decorative image) — only flag when attribute is absent
+    if (img.hasAttribute("alt")) continue;
+
+    const needle = elementNeedle(img);
+    const line = findLine(component.sourceCode, needle);
+    const src = img.getAttribute("src") ?? "";
+    const label = src ? `<img src="${src}">` : "<img>";
+
+    results.push({
+      status: "fail",
+      ruleId: RULE,
+      filePath: component.filePath,
+      line,
+      issue: `${label} is missing an alt attribute — screen readers will announce the file name or skip the image entirely`,
+      suggestedFix: `Add a descriptive alt attribute, e.g. alt="Description of image". Use alt="" for purely decorative images.`,
+    });
+  }
+
+  return results;
+}
+
 function checkUnfocusableInteractive(
   document: ReturnType<typeof parseHTML>["document"],
   component: UIComponent,
@@ -298,12 +331,13 @@ export async function runMotorPersona(input: PersonaInput): Promise<PersonaRepor
   const inScope = inScopeRuleIds(input.complianceContext);
   const allResults: TestResult[] = [];
 
-  const RULES_CHECKED = ["2.1.1", "2.4.7", "4.1.2", "2.4.3"] as const;
+  const RULES_CHECKED = ["1.1.1", "2.1.1", "2.4.7", "4.1.2", "2.4.3"] as const;
 
   for (const component of input.components) {
     const { document } = parseHTML(component.compiledHTML);
 
     const failures: TestResult[] = [
+      ...checkMissingAltText(document, component, inScope),
       ...checkUnfocusableInteractive(document, component, inScope),
       ...checkMissingFocusIndicator(document, component, inScope),
       ...checkDivSpanInteractive(document, component, inScope),

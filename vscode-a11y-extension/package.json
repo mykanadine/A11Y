@@ -1,0 +1,73 @@
+{
+  "name": "vscode-a11y-simulator",
+  "displayName": "A11y Simulator",
+  "description": "Real-time WCAG 2.2 accessibility linting with Motor, Visual, and Vestibular persona checks",
+  "version": "0.1.0",
+  "publisher": "ibm-hackathon",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Linters"],
+  "activationEvents": ["onLanguage:html", "onLanguage:javascriptreact", "onLanguage:typescriptreact", "onLanguage:javascript", "onLanguage:typescript", "onLanguage:css", "onLanguage:scss"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "a11y.scanFile",
+        "title": "A11y: Scan Current File",
+        "icon": "$(accessibility)"
+      },
+      {
+        "command": "a11y.scanFileWithJira",
+        "title": "A11y: Scan with Jira Spec…"
+      },
+      {
+        "command": "a11y.clearDiagnostics",
+        "title": "A11y: Clear Diagnostics"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "a11y.scanFile",
+          "when": "resourceExtname =~ /\\.(jsx?|tsx?|html|css|scss|svg)$/",
+          "group": "navigation"
+        }
+      ]
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "a11ySimulatorView",
+          "name": "A11Y Simulator",
+          "icon": "$(accessibility)",
+          "contextualTitle": "Accessibility Issues"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "A11y Simulator",
+      "properties": {
+        "a11ySimulator.scanOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically scan files when saved."
+        },
+        "a11ySimulator.enginePath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to the a11y-agent dist/index.js. Leave empty to use the bundled engine."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  }
+}

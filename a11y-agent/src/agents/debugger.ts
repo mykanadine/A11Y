@@ -256,7 +256,12 @@ function patchPositiveTabindex(
 
 /** Compute relative luminance of a hex colour (WCAG 2.1 formula). */
 function relativeLuminance(hex: string): number {
-  const rgb = parseInt(hex.replace("#", ""), 16);
+  // Expand 3-digit shorthand (#aaa → #aaaaaa) before parsing
+  let cleaned = hex.replace("#", "");
+  if (cleaned.length === 3) {
+    cleaned = cleaned[0]! + cleaned[0]! + cleaned[1]! + cleaned[1]! + cleaned[2]! + cleaned[2]!;
+  }
+  const rgb = parseInt(cleaned, 16);
   const r = ((rgb >> 16) & 0xff) / 255;
   const g = ((rgb >> 8) & 0xff) / 255;
   const b = (rgb & 0xff) / 255;
@@ -264,18 +269,34 @@ function relativeLuminance(hex: string): number {
   return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 }
 
+/**
+ * WCAG-AA-safe fallback colours used when no design-system palette is configured.
+ * Each entry is guaranteed ≥ 4.5:1 against white (#ffffff) and is a common,
+ * recognisable dark neutral that developers can replace with their brand token.
+ */
+const FALLBACK_PALETTE: Array<{ token: string; hex: string }> = [
+  { token: "fallback-black",       hex: "#000000" }, // 21.00:1 on white
+  { token: "fallback-near-black",  hex: "#1a1a1a" }, // 17.51:1 on white
+  { token: "fallback-dark-gray",   hex: "#595959" }, //  7.00:1 on white
+  { token: "fallback-dark-blue",   hex: "#005fcc" }, //  7.45:1 on white
+];
+
 /** Pick the approved-palette colour with the highest contrast ratio against `bgHex`. */
 function bestPaletteColor(
   palette: ApprovedFixPalette | undefined,
   bgHex: string,
   minRatio: number
 ): { token: string; hex: string } | null {
-  if (!palette?.colors.length) return null;
   const bgL = relativeLuminance(bgHex);
 
+  // Build candidate list: design-system palette (preferred) or built-in fallback
+  const candidates: Array<{ token: string; hex: string }> =
+    palette?.colors.filter((c) => c.wcagAA).length
+      ? palette!.colors.filter((c) => c.wcagAA)
+      : FALLBACK_PALETTE;
+
   let best: { token: string; hex: string; ratio: number } | null = null;
-  for (const c of palette.colors) {
-    if (!c.wcagAA) continue;
+  for (const c of candidates) {
     const fgL = relativeLuminance(c.hex);
     const lighter = Math.max(fgL, bgL);
     const darker = Math.min(fgL, bgL);
@@ -318,8 +339,11 @@ function patchContrast(
       )
     : original; // no palette available — diff will be identity; explanation still posted
 
+  const isFallback = replacement && replacement.token.startsWith("fallback-");
   const fixDescription = replacement
-    ? `Replaced \`${failingHex}\` with \`${replacement.hex}\` (design-system token \`${replacement.token}\`).`
+    ? isFallback
+      ? `Replaced \`${failingHex}\` with \`${replacement.hex}\` (WCAG-safe fallback — swap for your brand token with ≥${minRatio}:1 contrast against \`${bgHex}\`).`
+      : `Replaced \`${failingHex}\` with \`${replacement.hex}\` (design-system token \`${replacement.token}\`).`
     : `No approved-palette colour available — manually select a colour with ≥${minRatio}:1 contrast against \`${bgHex}\`.`;
 
   return {
@@ -470,6 +494,43 @@ function patchFlashing(
   };
 }
 
+// ── 1.1.1  Missing alt text on <img> ─────────────────────────────────────────
+function patchAltText(
+  failure: TestResult,
+  source: string
+): PatchResult {
+  const line = failure.line ?? findLineNumber(source, "<img");
+  const { lines, startLine } = extractWindow(source, line ?? 1, 1);
+  const original = lines;
+
+  // Inject alt="" placeholder into the <img> tag on the failing line.
+  // We use a placeholder value so the developer fills in a meaningful description.
+  const patched = original.map((l) =>
+    // Handles both HTML (<img src="..."> and <img src="..." />) and JSX (src={...})
+    l.replace(
+      /(<img\b)([^>]*?)(\/?>)/i,
+      (_full, open, attrs, close) => {
+        // Only add alt when it's actually missing
+        if (/\balt\s*=/.test(attrs)) return _full;
+        return `${open}${attrs} alt=""${close}`;
+      }
+    )
+  );
+
+  return {
+    originalSnippet: original.join("\n"),
+    patchedSnippet: patched.join("\n"),
+    diff: buildUnifiedDiff(failure.filePath, startLine, original, patched),
+    explanation:
+      `WCAG 1.1.1 — Non-text Content: every <img> must have an alt attribute. ` +
+      `Screen readers (used by ~7% of web users) announce the file name when alt is absent, ` +
+      `which is meaningless. Use a concise description of the image's purpose (e.g. alt="Company logo"), ` +
+      `or alt="" to mark it as purely decorative so screen readers skip it entirely. ` +
+      `The patch adds alt="" as a placeholder — fill in a meaningful value before merging.`,
+    resolvedLine: line,
+  };
+}
+
 // ─── Strategy router ──────────────────────────────────────────────────────────
 
 /**
@@ -483,6 +544,8 @@ function applyStrategy(
   palette: ApprovedFixPalette | undefined
 ): PatchResult {
   switch (failure.ruleId) {
+    case "1.1.1":
+      return patchAltText(failure, source);
     case "2.1.1":
       return patchUnfocusable(failure, source);
     case "2.4.7":

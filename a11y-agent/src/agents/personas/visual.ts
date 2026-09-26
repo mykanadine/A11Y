@@ -266,12 +266,15 @@ function checkContrast(
   const RULE_ID = "1.4.3";
   if (!ruleInScope(RULE_ID, scoped)) return [];
 
-  const css = extractCss(component.compiledHTML) +
-    "\n" +
-    extractCss(component.sourceCode);
+  // Parse CSS from sourceCode only — compiledHTML is a stub that embeds the
+  // raw source verbatim, so concatenating both would double-count every rule.
+  const css = extractCss(component.sourceCode);
   const rules = parseCssRules(css);
 
   const failures: TestResult[] = [];
+  // Deduplicate by (selector, fgHex, bgHex) so the same rule isn't reported twice
+  // if the same CSS block appears in multiple extracted contexts.
+  const seen = new Set<string>();
 
   for (const rule of rules) {
     const colorVal = getDecl(rule.declarations, "color");
@@ -282,6 +285,10 @@ function checkContrast(
 
     const bgHex = bgVal ? extractHexFromValue(bgVal) : "#ffffff";
     if (!bgHex) continue;
+
+    const dedupeKey = `${rule.selector.trim()}|${fgHex}|${bgHex}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
 
     const ratio = contrastRatio(fgHex, bgHex);
     if (ratio === null) continue;

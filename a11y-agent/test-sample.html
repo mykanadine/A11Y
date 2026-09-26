@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    .btn { color: #aaa; background-color: #fff; }
+    .box { animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <!-- Missing alt text on image -->
+  <img src="logo.png">
+
+  <!-- Non-semantic clickable div — no role, no tabindex -->
+  <div onclick="doSomething()" class="btn">Click me</div>
+
+  <!-- Low contrast text (grey #aaa on white) -->
+  <p style="color: #aaaaaa; background-color: #ffffff;">Hard to read text</p>
+
+  <!-- Autoplaying animation with no prefers-reduced-motion guard -->
+  <div class="box">Spinning content</div>
+
+  <!-- Positive tabindex breaks natural tab order -->
+  <button tabindex="5">Submit</button>
+</body>
+</html>
