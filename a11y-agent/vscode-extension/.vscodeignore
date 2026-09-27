@@ -39,8 +39,6 @@ Thumbs.db
 *~
 .gitignore
 .bobignore
-README.md
-CHANGELOG.md
 
 # ── Explicitly KEEP the runtime engine ───────────────────────────────────────
 # (vsce includes engine/ by default once the above exclusions are applied,
@@ -50,6 +48,13 @@ CHANGELOG.md
 !engine/index.cjs
 !engine/data/
 !engine/data/wcag-2.2-index.json
-!out/
-!out/extension.js
 !package.json
+
+package-ext.json
+package-old.json
+out/*.map
+releases/
+src/
+scripts/
+tsconfig-ext.json
+node_modules/

@@ -20,7 +20,7 @@
     "extension:check": "cd vscode-extension && npm run typecheck",
     "extension:dev": "npm run build && cd vscode-extension && npm run build && npm run bundle-engine",
     "extension:package": "npm run extension:build && cd vscode-extension && npm run package",
-    "extension:install-local": "npm run extension:package && node scripts/install-local-vsix.js",
+    "extension:install-local": "npm run extension:package && node scripts/install-local-vsix.cjs",
     "extension:publish": "cd vscode-extension && npm run publish"
   },
   "dependencies": {

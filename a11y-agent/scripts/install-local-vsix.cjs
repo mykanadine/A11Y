@@ -46,8 +46,11 @@ function findLatestVsix() {
 // ── Check if the `code` CLI is available ──────────────────────────────────────
 function isCodeCliAvailable() {
   try {
-    const result = spawnSync("code", ["--version"], { encoding: "utf8", timeout: 5000 });
-    return result.status === 0;
+    execSync("code --version", {
+      stdio: "ignore"
+    });
+
+    return true;
   } catch {
     return false;
   }
@@ -72,7 +75,10 @@ if (!isCodeCliAvailable()) {
 
 console.log("[install-local] Installing extension via 'code' CLI…");
 try {
-  execSync(`code --install-extension "${vsixPath}" --force`, { stdio: "inherit" });
+  execSync(
+    `code --install-extension "${vsixPath}" --force`,
+    { stdio: "inherit" }
+  );
   console.log("[install-local] ✅ Extension installed successfully.");
   console.log("[install-local] Reload VS Code (Ctrl+Shift+P → Developer: Reload Window)");
   console.log("[install-local] Then open any HTML/JSX/TSX file and run: A11y: Scan Current File");
