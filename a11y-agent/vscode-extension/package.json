@@ -2,8 +2,9 @@
   "name": "a11y-simulator",
   "displayName": "ShiftAble",
   "description": "Real-time WCAG 2.2 accessibility linting with Motor, Visual, and Vestibular/Cognitive persona checks. Runs entirely locally — no GitHub token required.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "LABYU",
+  "icon": "shiftAble_vs.png",
   "license": "MIT",
   "repository": {
     "type": "git",
