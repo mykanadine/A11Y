@@ -4,7 +4,7 @@
   "description": "Real-time WCAG 2.2 accessibility linting with Motor, Visual, and Vestibular persona checks",
   "version": "0.1.0",
   "publisher": "ibm-hackathon",
-  "icon": "images/shiftAble_vs.png",
+  "icon": "$(accessibility)" ,
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Linters"],
   "activationEvents": ["onLanguage:html", "onLanguage:javascriptreact", "onLanguage:typescriptreact", "onLanguage:javascript", "onLanguage:typescript", "onLanguage:css", "onLanguage:scss"],
@@ -14,7 +14,7 @@
       {
         "command": "a11y.scanFile",
         "title": "A11y: Scan Current File",
-        "icon": "images/shiftable1.svg"
+        "icon": "$(accessibility)" 
       },
       {
         "command": "a11y.scanFileWithJira",
@@ -39,7 +39,7 @@
         {
           "id": "a11ySimulatorView",
           "name": "A11Y Simulator",
-          "icon": "images/shiftable1.svg",
+          "icon": "$(accessibility)" ,
           "contextualTitle": "Accessibility Issues"
         }
       ]
