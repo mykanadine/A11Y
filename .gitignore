@@ -116,6 +116,11 @@ build/
 *~
 .backup/
 
+# Shared VS Code development configuration
+!a11y-agent/.vscode/
+!a11y-agent/.vscode/launch.json
+!a11y-agent/.vscode/tasks.json
+
 # ============================================
 # DO NOT REMOVE ABOVE PATTERNS
 # Add project-specific patterns below

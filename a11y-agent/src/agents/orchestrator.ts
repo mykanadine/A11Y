@@ -138,15 +138,17 @@ function buildPRComment(failures: FailureWithPatch[], repo: string, prNumber: nu
   const sections = failures.map((f, i) => {
     const fileLine = f.line ? `\`${f.filePath}:${f.line}\`` : `\`${f.filePath}\``;
     const fix = f.suggestedFix.replace(/\|/g, "\\|").replace(/\n/g, " ");
-    // Accept Fix: opens a pre-filled PR review comment with the unified diff body,
-    // which the developer can submit to trigger the apply-patch workflow.
-    const acceptUrl =
+    // "View Patch" opens a pre-filled GitHub issue whose body contains the
+    // unified diff. The developer can copy the diff and apply it manually with
+    //   git apply <patch-file>
+    // This does NOT automatically rewrite the PR branch.
+    const viewPatchUrl =
       `https://github.com/${repo}/issues/new` +
       `?title=${encodeURIComponent(`a11y-fix: ${f.filePath} — WCAG ${f.ruleId}`)}` +
       `&body=${encodeURIComponent(
-        `<!-- A11y-Agent auto-patch: apply with \`git apply\` -->\n\`\`\`diff\n${f.patch.diff}\n\`\`\``
+        `<!-- A11y-Agent suggested patch — apply locally with \`git apply\` -->\n\`\`\`diff\n${f.patch.diff}\n\`\`\``
       )}`;
-    const row = `| ${f.persona} | ${f.issue} | ${fileLine} | ${fix} | [Accept Fix ↗](${acceptUrl}) |`;
+    const row = `| ${f.persona} | ${f.issue} | ${fileLine} | ${fix} | [View Patch ↗](${viewPatchUrl}) |`;
     // Explanation line above the row — indented as a blockquote so it renders
     // visually attached to its row without breaking the table.
     const explanation = `> **Fix ${i + 1}:** ${f.patch.explanation}`;
@@ -157,7 +159,7 @@ function buildPRComment(failures: FailureWithPatch[], repo: string, prNumber: nu
   // GitHub Markdown renders blockquotes outside table cells, so we interleave
   // the header+separator once and then each explanation+row pair.
   const header = [
-    "| Persona | Issue | File:Line | Suggested Fix | Accept Fix |",
+    "| Persona | Issue | File:Line | Suggested Fix | View Patch |",
     "|---------|-------|-----------|---------------|------------|",
   ].join("\n");
 

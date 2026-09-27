@@ -8,11 +8,11 @@
       "stopOnEntry": false,
       "timeout": 30000,
       "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}",
-        "${workspaceFolder}/../test-sample.html"
+        "--extensionDevelopmentPath=${workspaceFolder}/vscode-extension",
+        "${workspaceFolder}/test-sample.html"
       ],
       "outFiles": [
-        "${workspaceFolder}/out/**/*.js"
+        "${workspaceFolder}/vscode-extension/out/**/*.js"
       ],
       "preLaunchTask": "Build A11y Extension (full)",
       "skipFiles": [

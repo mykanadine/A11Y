@@ -87,16 +87,28 @@ export class DiagnosticsProvider {
   private resolveEnginePath(): string {
     const cfg = vscode.workspace.getConfiguration("a11ySimulator");
     const custom = cfg.get<string>("enginePath", "");
-    if (custom && fs.existsSync(custom)) return custom;
+    if (custom) {
+      if (fs.existsSync(custom)) return custom;
+      // Custom path was set but doesn't exist — warn loudly rather than silently falling back
+      throw new Error(
+        `a11ySimulator.enginePath is set to "${custom}" but that file does not exist. ` +
+        `Clear the setting to use the bundled engine.`
+      );
+    }
 
-    // Default: sibling a11y-agent package relative to this extension's location
+    // Default: bundled engine shipped inside the installed extension
     const extensionRoot = this.context.extensionPath;
-    const sibling = path.resolve(extensionRoot, "..", "dist", "index.js");
-    if (fs.existsSync(sibling)) return sibling;
+    const bundled = path.join(extensionRoot, "engine", "index.cjs");
+    if (fs.existsSync(bundled)) return bundled;
+
+    // Development fallback: sibling dist/ when running via F5 in the repo
+    const devSibling = path.resolve(extensionRoot, "..", "dist", "index.js");
+    if (fs.existsSync(devSibling)) return devSibling;
 
     throw new Error(
-      "a11y-agent engine not found. Set a11ySimulator.enginePath in settings, " +
-      "or ensure a11y-agent/dist/index.js exists alongside the extension."
+      "A11y Simulator engine is missing from this extension installation. " +
+      "Reinstall the extension or rebuild the extension package. " +
+      "(Expected: engine/index.cjs inside the extension folder)"
     );
   }
 

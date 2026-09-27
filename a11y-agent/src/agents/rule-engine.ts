@@ -123,9 +123,26 @@ async function loadWCAGIndex(): Promise<WCAGIndexEntry[]> {
     if (!res.ok) throw new Error(`[RuleEngine] WCAG index fetch failed: ${res.status}`);
     raw = await res.text();
   } else {
-    // Fall back to the bundled baseline index shipped with this package
-    const require = createRequire(import.meta.url);
-    const indexPath = require.resolve("../data/wcag-2.2-index.json");
+    // Fall back to the bundled baseline index shipped with this package.
+    //
+    // Dual-environment data path resolution:
+    //   - ESM (tsx / tsc dev build):  import.meta.url is valid; use createRequire
+    //   - CJS (esbuild VSIX bundle):  esbuild injects __dirname as a local; use it directly
+    //
+    // The process.env.BUNDLE_MODE define set by bundle-engine.js makes the ESM
+    // branch dead-code in the CJS bundle (tree-shaken), so the import.meta.url
+    // reference never executes and emits no runtime warning.
+    const isBundled = process.env.BUNDLE_MODE === "extension";
+    let indexPath: string;
+    if (isBundled) {
+      // CJS bundle: __dirname === engine directory; data/ is a sibling folder
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      indexPath = path.join(__dirname, "data", "wcag-2.2-index.json");
+    } else {
+      // ESM source: resolve relative to this file via createRequire
+      const req = createRequire(import.meta.url);
+      indexPath = req.resolve("../data/wcag-2.2-index.json");
+    }
     raw = await fs.readFile(indexPath, "utf8");
   }
 
